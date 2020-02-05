@@ -1,0 +1,75 @@
+* Google Coral and IMB Compute Stick 2 setup
+** Coral
+*** Setup
+- Note this setup allows instant running with tflite in Python
+#+BEGIN_SRC bash
+sudo apt update && sudo apt dist-upgrade -y
+
+echo "deb https://packages.cloud.google.com/apt coral-edgetpu-stable main" | sudo tee /etc/apt/sources.list.d/coral-edgetpu.list
+
+curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+sudo apt-get update
+
+sudo apt-get install git python3-pip python3-edgetpu libedgetpu1-std -y
+
+pip3 install https://dl.google.com/coral/python/tflite_runtime-2.1.0-cp37-cp37m-linux_armv7l.whl
+
+sudo reboot
+#TEST IT
+mkdir coral && cd coral
+
+git clone https://github.com/google-coral/tflite.git
+
+cd tflite/python/examples/classification
+
+bash install_requirements.sh
+
+cd coral/tflite/python/examples/classification
+
+python3 classify_image.py --model models/mobilenet_v2_1.0_224_inat_bird_quant_edgetpu.tflite --labels models/inat_bird_labels.txt --input images/parrot.jpg
+#+END_SRC
+
+** IBM Compute Stick 2
+*** Setup
+#+BEGIN_SRC bash
+# Check here for latest release - https://download.01.org/opencv/2019/openvinotoolkit/R3/ and change wget command if later version available.
+wget https://download.01.org/opencv/2019/openvinotoolkit/R3/l_openvino_toolkit_runtime_raspbian_p_2019.3.334.tgz
+
+sudo mkdir -p /opt/intel/openvino
+
+sudo tar -xf  l_openvino_toolkit_runtime_raspbian_p_2019.3.334.tgz --strip 1 -C /opt/intel/openvino
+
+sudo apt update && sudo apt dist-upgrade -y
+
+sudo apt install cmake git python3-pip python3-numpy libgtk-3-dev -y
+
+source /opt/intel/openvino/bin/setupvars.sh
+
+echo "source /opt/intel/openvino/bin/setupvars.sh" >> ~/.bashrc
+
+sudo usermod -a -G users "$(whoami)"
+
+exit #Then log back in
+
+sh /opt/intel/openvino/install_dependencies/install_NCS_udev_rules.sh
+
+## Setup model optimizer
+git clone https://github.com/opencv/dldt.git
+cd dldt/model-optimizer
+sudo pip3 install -U setuptools
+sudo pip3 install -r requirements_tf.txt
+sudo pip3 install -r requirements_caffe.txt
+export PATH=~/dldt/model-optimizer:$PATH
+export PYTHONPATH=~/dldt/model-optmizer:$PYTHONPATH
+
+## Test with Python
+cd ~
+git clone https://github.com/movidius/ncappzoo.git
+cd ncappzoo
+make install_deps
+sudo pip3 install test-generator
+cd apps/simple_classifier_py
+make run
+python3 run.py
+#+END_SRC
